@@ -33,6 +33,12 @@ before(function () {
 
   app.use(express.static(path.join(__dirname, 'public')))
 
+  // pass req data into res.locals
+  app.use(function(req, res, next) {
+    res.locals.originalUrl = req.originalUrl;
+    next();
+  })
+
   // value for async helper
   // it will be called a few times from the template
   var indx = 0
@@ -47,6 +53,14 @@ before(function () {
     process.nextTick(function () {
       var val = a + b
       cb(val)
+    })
+  })
+
+  // access req data from res.locals
+  hbs.registerAsyncHelper('async-with-context', function (context, cb) {
+    var originalUrl = this.originalUrl;
+    process.nextTick(function () {
+      cb('originalUrl: ' + originalUrl)
     })
   })
 
@@ -73,6 +87,12 @@ before(function () {
 
   app.get('/async-with-params', function (req, res) {
     res.render('async-with-params', {
+      layout: false
+    })
+  })
+
+  app.get('/async-with-context', function (req, res) {
+    res.render('async-with-context', {
       layout: false
     })
   })
@@ -103,5 +123,12 @@ test('async-with-params', function(done) {
   request(app)
     .get('/async-with-params')
     .expect(fs.readFileSync(path.join(FIXTURES_DIR, 'async-with-params.html'), 'utf8'))
+    .end(done)
+});
+
+test('async-with-context', function(done) {
+  request(app)
+    .get('/async-with-context')
+    .expect(fs.readFileSync(path.join(FIXTURES_DIR, 'async-with-context.html'), 'utf8'))
     .end(done)
 });

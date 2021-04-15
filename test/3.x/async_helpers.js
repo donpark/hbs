@@ -32,12 +32,24 @@ before(function () {
 
   app.use(express.static(path.join(__dirname, 'public')))
 
+  app.use(function(req, res, next) {
+    res.locals.originalUrl = req.originalUrl;
+    next();
+  })
+
   // value for async helper
   // it will be called a few times from the template
   var vals = ['foo', 'bar', 'baz']
   hbs.registerAsyncHelper('async', function (context, cb) {
     process.nextTick(function () {
       cb(vals.shift())
+    })
+  })
+
+  hbs.registerAsyncHelper('async-with-context', function (context, cb) {
+    var originalUrl = this.originalUrl;
+    process.nextTick(function () {
+      cb('originalUrl: ' + originalUrl)
     })
   })
 
@@ -61,6 +73,12 @@ before(function () {
       layout: false
     })
   })
+
+  app.get('/async-with-context', function (req, res) {
+    res.render('async-with-context', {
+      layout: false
+    })
+  })
 })
 
 test('index', function (done) {
@@ -74,5 +92,12 @@ test('async', function(done) {
   request(app)
     .get('/fake-async')
     .expect(fs.readFileSync(path.join(FIXTURES_DIR, 'fake-async.html'), 'utf8'))
+    .end(done)
+});
+
+test('async-with-context', function(done) {
+  request(app)
+    .get('/async-with-context')
+    .expect(fs.readFileSync(path.join(FIXTURES_DIR, 'async-with-context.html'), 'utf8'))
     .end(done)
 });
